@@ -1,9 +1,5 @@
-import Image from "next/image";
+import HeroSection from "@/components/hero-section"
 
-export default function Home() {
-  return (
-    <div>
-      hello pororo 
-    </div>
-  );
+export default function Page() {
+  return <HeroSection />
 }
