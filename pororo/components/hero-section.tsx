@@ -499,7 +499,7 @@ export default function HeroSection() {
             whileTap={{ scale: 0.97 }}
             onMouseDown={handleButtonClick}
           >
-            Системд нэвтрэх
+            Статистик харах
             {ripples.map((ripple) => (
               <motion.span
                 key={ripple.id}
@@ -512,14 +512,6 @@ export default function HeroSection() {
             ))}
           </motion.button>
 
-          <motion.button
-            className="liquid-glass rounded-full px-8 py-3.5 text-white/80"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.97 }}
-            onMouseDown={handleButtonClick}
-          >
-            Статистик харах
-          </motion.button>
         </motion.div>
       </div>
 
