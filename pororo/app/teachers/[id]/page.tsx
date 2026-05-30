@@ -3,69 +3,109 @@
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  RadarChart, PolarGrid, PolarAngleAxis, Radar
 } from "recharts";
 import { ArrowLeft, BookOpen, GraduationCap, ShieldCheck, Flame, Layers } from "lucide-react";
-import { TEACHERS_LIST } from "../page"; // Жагсаалтын датаг эндээс уншина
+
+type TeacherDetail = {
+  id: string;
+  name: string;
+  severityIndex: number;
+  noise: number;
+  commissionId?: string;
+  classes?: string[];
+  papers?: string[];
+  seasonData?: {
+    winter?: ProcessScore[];
+    spring?: ProcessScore[];
+  };
+};
+
+type ProcessScore = {
+  name: string;
+  max: number;
+  score: number;
+};
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5001";
 
 export default function TeacherDashboardDetail() {
   const params = useParams();
   const id = params?.id as string;
+
+  const [teacherInfo, setTeacherInfo] = useState<TeacherDetail | null>(null);
   const [season, setSeason] = useState<"winter" | "spring">("spring");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
 
-  // Сонгогдсон багшийн бодит датаг жагсаалтаас шүүж авах архитектур
-  const teacherInfo = useMemo(() => {
-    const found = TEACHERS_LIST.find(t => t.id === id);
-    if (found) return found;
-    // Хэрэв олдохгүй бол default утга буцаана (Алдаанаас хамгаална)
-    return { id: id || "B1", name: "Д. Профессор (Томилогдсон)", severityIndex: -1.2, noise: 2.4 };
+    if (!id) return;
+
+    fetch(`${API_BASE_URL}/api/teachers/${id}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch teacher detail");
+        return res.json();
+      })
+      .then((data: TeacherDetail) => setTeacherInfo(data))
+      .catch((error) => {
+        console.error("Teacher detail fetch error:", error);
+        setTeacherInfo(null);
+      });
   }, [id]);
 
-  // Улирлын хамааралтай мок датаг динамикаар үүсгэх логик
   const activeSeasonData = useMemo(() => {
-    const factor = season === "winter" ? 0.85 : 1.05; // Өвлийн улиралд дүн арай хатуу байх бодит симуляци
+    if (teacherInfo?.seasonData?.[season]) {
+      return teacherInfo.seasonData[season]!;
+    }
+
+    const factor = season === "winter" ? 0.85 : 1.05;
+
     return [
       { name: "Удирдагч", max: 15, score: parseFloat((13 * factor).toFixed(1)) },
       { name: "Үзлэг", max: 20, score: parseFloat((16 * factor).toFixed(1)) },
       { name: "Урьдчилсан", max: 25, score: parseFloat((20 * factor).toFixed(1)) },
       { name: "Жинхэнэ хамгаалалт", max: 35, score: parseFloat((28 * factor).toFixed(1)) },
-      { name: "Шүүмжлэгч", max: 5, score: parseFloat((4.2 * factor).toFixed(1)) }
+      { name: "Шүүмжлэгч", max: 5, score: parseFloat((4.2 * factor).toFixed(1)) },
     ];
-  }, [season]);
+  }, [teacherInfo, season]);
 
-  const staticDetails = {
-    classes: ["Програмчлалын үндэс", "Өгөгдлийн сангийн систем", "Системийн анализ ба дизайн"],
-    papers: ["Machine Learning Models for Fair Grading in Higher Education", "Distributed Academic Ledger System Optimization"]
-  };
+  const classes = teacherInfo?.classes || [
+    "Програмчлалын үндэс",
+    "Өгөгдлийн сангийн систем",
+    "Системийн анализ ба дизайн",
+  ];
 
-  if (!mounted) {
+  const papers = teacherInfo?.papers || [
+    "Machine Learning Models for Fair Grading in Higher Education",
+    "Distributed Academic Ledger System Optimization",
+  ];
+
+  if (!mounted || !teacherInfo) {
     return <div className="p-6 text-center text-slate-400 font-medium">Дашбоард ачаалж байна...</div>;
   }
 
   return (
     <div className="p-6 bg-slate-50 min-h-screen text-slate-800">
       <div className="max-w-6xl mx-auto">
-        
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <Link href="/teachers" className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors">
             <ArrowLeft className="w-4 h-4" />
             Багш нарын жагсаалт руу буцах
           </Link>
-          
+
           <div className="flex bg-slate-200/60 p-1 rounded-xl border border-slate-200">
-            <button 
+            <button
               onClick={() => setSeason("winter")}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${season === "winter" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
             >
               ❄️ Өвөл сонгох (30-50 оюутан)
             </button>
-            <button 
+            <button
               onClick={() => setSeason("spring")}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${season === "spring" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
             >
@@ -85,7 +125,7 @@ export default function TeacherDashboardDetail() {
               <p className="text-xs text-slate-400 mt-0.5">МУИС - Мэдээллийн Технологи, Электрониксийн Сургууль</p>
             </div>
           </div>
-          
+
           <div className="flex gap-4">
             <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-center">
               <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Severity Index</p>
@@ -148,7 +188,7 @@ export default function TeacherDashboardDetail() {
               Заадаг Хичээлүүд
             </div>
             <div className="space-y-2">
-              {staticDetails.classes.map((cls, idx) => (
+              {classes.map((cls, idx) => (
                 <div key={idx} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-semibold text-slate-700">
                   {cls}
                 </div>
@@ -162,7 +202,7 @@ export default function TeacherDashboardDetail() {
               Сүүлийн үеийн Судалгааны бүтээлүүд
             </div>
             <div className="space-y-2">
-              {staticDetails.papers.map((paper, idx) => (
+              {papers.map((paper, idx) => (
                 <div key={idx} className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-600 italic">
                   "{paper}"
                 </div>
