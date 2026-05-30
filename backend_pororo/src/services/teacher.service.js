@@ -17,6 +17,31 @@ function buildFingerprint(teacher) {
   return `${tendency} & ${consistency}`;
 }
 
+async function getTeachers() {
+  const [analytics, committees] = await Promise.all([
+    readCsv("teacher_analytics.csv"),
+    readCsv("committees.csv"),
+  ]);
+
+  return analytics.map((t) => {
+    const committee = committees.find((c) => c.teacher_id === t.id);
+    return {
+      id: t.id,
+      name: t.name,
+      severityIndex: t.severity_index,
+      noise: t.noise,
+      commissionId: committee ? committee.committee : "",
+    };
+  });
+}
+
+async function getTeacherDetail(teacherId) {
+  const analytics = await readCsv("teacher_analytics.csv");
+  const teacher = analytics.find((t) => t.id === teacherId);
+  if (!teacher) return null;
+  return { ...teacher, fingerprint: buildFingerprint(teacher) };
+}
+
 async function getTeacherAnalytics() {
   const teachers = await readCsv("teacher_analytics.csv");
 
@@ -41,5 +66,7 @@ async function getTeacherAnalytics() {
 }
 
 module.exports = {
-  getTeacherAnalytics
+  getTeachers,
+  getTeacherDetail,
+  getTeacherAnalytics,
 };

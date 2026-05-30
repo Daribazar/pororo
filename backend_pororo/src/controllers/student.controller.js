@@ -1,5 +1,14 @@
 const studentService = require("../services/student.service");
 
+async function getAllStudents(req, res) {
+  try {
+    const result = await studentService.getAllStudents();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: "Оюутны жагсаалт авахад алдаа гарлаа" });
+  }
+}
+
 async function searchStudents(req, res) {
   try {
     const result = await studentService.searchStudents(req.query.q);
@@ -24,6 +33,7 @@ async function getStudentDetail(req, res) {
 }
 
 module.exports = {
+  getAllStudents,
   searchStudents,
   getStudentDetail
 };

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react"
 import { ChevronDown } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 // Window light positions (approximate building window locations)
 const windowLights = [
@@ -13,6 +14,7 @@ const windowLights = [
 ]
 
 export default function HeroSection() {
+  const router = useRouter()
   const heroRef = useRef<HTMLDivElement>(null)
   const [stars, setStars] = useState<{ id: number; x: number; y: number; size: number; dur: number; delay: number }[]>([])
   const [streaks, setStreaks] = useState<{ id: number; x: number; y: number; dur: number; delay: number }[]>([])
@@ -79,7 +81,7 @@ export default function HeroSection() {
   useEffect(() => {
     if (!statsInView) return
 
-    const targets = { students: 847, teachers: 35, committees: 9, passed: 92 }
+    const targets = { students: 125, teachers: 35, committees: 5, passed: 100 }
     const duration = 2000
     const startTime = Date.now()
 
@@ -498,6 +500,7 @@ export default function HeroSection() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.97 }}
             onMouseDown={handleButtonClick}
+            onClick={() => router.push("/dashboard")}
           >
             Статистик харах
             {ripples.map((ripple) => (

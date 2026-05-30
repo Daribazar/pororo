@@ -1,6 +1,10 @@
 const { readCsv } = require("../repositories/csv.repository");
 const { max, min, round } = require("../utils/math");
 
+async function getAllStudents() {
+  return await readCsv("students.csv");
+}
+
 async function searchStudents(query) {
   const students = await readCsv("students.csv");
 
@@ -35,8 +39,8 @@ async function getStudentDetail(studentId) {
   const studentYavts2 = yavts2Scores.filter((d) => d.student_id === studentId);
   const studentUri = uriScores.filter((d) => d.student_id === studentId);
 
-  const defenseTotals = studentDefense.map((d) => d.total_35);
-  const controversyScore = max(defenseTotals) - min(defenseTotals);
+  const defenseTotals = studentDefense.map((d) => Number(d.total_35)).filter((n) => !isNaN(n));
+  const controversyScore = defenseTotals.length >= 2 ? max(defenseTotals) - min(defenseTotals) : 0;
 
   const alerts = [];
 
@@ -80,6 +84,7 @@ async function getStudentDetail(studentId) {
 }
 
 module.exports = {
+  getAllStudents,
   searchStudents,
   getStudentDetail
 };

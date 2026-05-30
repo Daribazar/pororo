@@ -6,6 +6,7 @@ const db = new Database(path.join(__dirname, "../data.sqlite"));
 db.exec(`
   CREATE TABLE IF NOT EXISTS thesis_scores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id TEXT DEFAULT '',
     filename TEXT NOT NULL,
     score INTEGER NOT NULL,
     innovation INTEGER NOT NULL,
@@ -15,5 +16,9 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+try {
+  db.exec(`ALTER TABLE thesis_scores ADD COLUMN student_id TEXT DEFAULT ''`);
+} catch (_) {}
 
 module.exports = db;

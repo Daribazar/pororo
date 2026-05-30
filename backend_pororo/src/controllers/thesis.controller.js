@@ -9,11 +9,13 @@ async function scoreThesis(req, res) {
     return res.status(400).json({ error: "PDF файл илгээнэ үү" });
   }
 
-  const parsed = await pdfParse(req.file.buffer);
-  const text = parsed.text || "";
-
-  console.log("PDF текстийн урт:", text.trim().length);
-  console.log("Эхний 200 тэмдэгт:", text.slice(0, 200));
+  let text = "";
+  try {
+    const parsed = await pdfParse(req.file.buffer);
+    text = parsed.text || "";
+  } catch {
+    return res.status(400).json({ error: "PDF уншихад алдаа гарлаа. Файл гэмтсэн байж болзошгүй." });
+  }
 
   if (text.trim().length < 10) {
     return res.status(400).json({ error: "PDF зураг хэлбэртэй байна (scan хийсэн). Текст агуулсан PDF илгээнэ үү." });
@@ -21,8 +23,12 @@ async function scoreThesis(req, res) {
 
   const preview = text.slice(0, 8000);
 
-  const completion = await client.chat.completions.create({
+  let completion;
+  try {
+    completion = await client.chat.completions.create({
+
     model: "llama-3.3-70b-versatile",
+    response_format: { type: "json_object" },
     messages: [
       {
         role: "user",
@@ -114,29 +120,51 @@ ${preview}
 }`,
       },
     ],
-  });
-
-  const raw = completion.choices[0].message.content;
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    return res.status(500).json({ error: "LLM-ийн хариулт буруу форматтай байна" });
+    });
+  } catch (err) {
+    return res.status(502).json({ error: "Groq API холбогдоход алдаа гарлаа: " + err.message });
   }
 
-  const result = JSON.parse(jsonMatch[0]);
+  const raw = completion.choices[0].message.content;
+
+  let result;
+  try {
+    result = JSON.parse(raw);
+  } catch {
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return res.status(500).json({ error: "LLM-ийн хариулт буруу форматтай байна" });
+    }
+    try {
+      result = JSON.parse(jsonMatch[0]);
+    } catch {
+      return res.status(500).json({ error: "LLM-ийн хариулт буруу форматтай байна" });
+    }
+  }
+
+  if (!result.breakdown || result.breakdown.innovation == null || result.breakdown.execution == null || result.breakdown.report == null) {
+    return res.status(500).json({ error: "LLM-ийн оноо дутуу буцсан байна" });
+  }
+
+  const score = Math.round(Number(result.score));
+  const innovation = Math.round(Number(result.breakdown.innovation));
+  const execution = Math.round(Number(result.breakdown.execution));
+  const report = Math.round(Number(result.breakdown.report));
 
   db.prepare(`
-    INSERT INTO thesis_scores (filename, score, innovation, execution, report, feedback)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO thesis_scores (student_id, filename, score, innovation, execution, report, feedback)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
+    req.body.student_id || "",
     req.file.originalname,
-    result.score,
-    result.breakdown.innovation,
-    result.breakdown.execution,
-    result.breakdown.report,
-    result.feedback
+    score,
+    innovation,
+    execution,
+    report,
+    result.feedback || ""
   );
 
-  res.json(result);
+  res.json({ score, breakdown: { innovation, execution, report }, feedback: result.feedback || "" });
 }
 
 function getScores(req, res) {
@@ -144,4 +172,9 @@ function getScores(req, res) {
   res.json(rows);
 }
 
-module.exports = { scoreThesis, getScores };
+function getScoreByStudent(req, res) {
+  const row = db.prepare("SELECT * FROM thesis_scores WHERE student_id = ? ORDER BY created_at DESC LIMIT 1").get(req.params.studentId);
+  res.json(row || null);
+}
+
+module.exports = { scoreThesis, getScores, getScoreByStudent };

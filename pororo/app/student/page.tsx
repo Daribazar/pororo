@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 type ScoreResult = {
   score: number;
@@ -12,7 +13,9 @@ type ScoreResult = {
   feedback: string;
 };
 
-export default function StudentPage() {
+function StudentForm() {
+  const searchParams = useSearchParams();
+  const [studentId, setStudentId] = useState(searchParams.get("id") ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScoreResult | null>(null);
@@ -43,6 +46,7 @@ export default function StudentPage() {
     try {
       const form = new FormData();
       form.append("pdf", file);
+      form.append("student_id", studentId);
 
       const res = await fetch("http://localhost:5001/api/thesis/score", {
         method: "POST",
@@ -62,7 +66,19 @@ export default function StudentPage() {
   return (
     <main className="min-h-screen bg-white flex flex-col items-center px-4 py-16">
       <h1 className="text-2xl font-semibold text-gray-900 mb-2">Материал оруулах</h1>
-      <p className="text-sm text-gray-400 mb-10">PDF файл байршуулж дипломын ажлаа үнэлүүлнэ үү</p>
+      <p className="text-sm text-gray-400 mb-8">PDF файл байршуулж дипломын ажлаа үнэлүүлнэ үү</p>
+
+      {/* Student ID */}
+      <div className="w-full max-w-md mb-6">
+        <label className="block text-xs text-gray-500 mb-1.5">Оюутны ID</label>
+        <input
+          type="text"
+          placeholder="S001"
+          value={studentId}
+          onChange={(e) => setStudentId(e.target.value)}
+          className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-800 outline-none focus:border-gray-400 transition-colors"
+        />
+      </div>
 
       {/* Drop zone */}
       <div
@@ -149,5 +165,13 @@ export default function StudentPage() {
         </div>
       )}
     </main>
+  );
+}
+
+export default function StudentPage() {
+  return (
+    <Suspense>
+      <StudentForm />
+    </Suspense>
   );
 }

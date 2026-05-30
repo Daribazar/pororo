@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
 type Summary = {
   totalStudents: number;
   totalTeachers: number;
@@ -33,85 +31,65 @@ type TeacherAnalytics = {
   teachers: Teacher[];
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function severityColor(idx: number): string {
-  if (idx <= -5) return "var(--clr-red)";
-  if (idx < -2) return "var(--clr-orange)";
-  if (idx > 5) return "var(--clr-violet)";
-  if (idx > 2) return "var(--clr-blue)";
-  return "var(--clr-green)";
+function severityColor(idx: number) {
+  if (idx <= -5) return { text: "text-red-500", bg: "bg-red-50", border: "border-red-200", hex: "#ef4444" };
+  if (idx < -2)  return { text: "text-orange-500", bg: "bg-orange-50", border: "border-orange-200", hex: "#f97316" };
+  if (idx > 5)   return { text: "text-violet-500", bg: "bg-violet-50", border: "border-violet-200", hex: "#8b5cf6" };
+  if (idx > 2)   return { text: "text-blue-500", bg: "bg-blue-50", border: "border-blue-200", hex: "#3b82f6" };
+  return { text: "text-emerald-500", bg: "bg-emerald-50", border: "border-emerald-200", hex: "#10b981" };
 }
 
-function severityLabel(idx: number): string {
+function severityLabel(idx: number) {
   if (idx <= -5) return "Маш хатуу";
-  if (idx < -2) return "Хатуу";
-  if (idx > 5) return "Маш зөөлөн";
-  if (idx > 2) return "Зөөлөн";
+  if (idx < -2)  return "Хатуу";
+  if (idx > 5)   return "Маш зөөлөн";
+  if (idx > 2)   return "Зөөлөн";
   return "Хэвийн";
 }
 
-function ScoreBar({ value, max = 100, color }: { value: number; max?: number; color: string }) {
+function Bar({ value, max = 100, hex }: { value: number; max?: number; hex: string }) {
   return (
-    <div className="db-bar-track">
+    <div className="h-1.5 w-full rounded-full bg-gray-100">
       <div
-        className="db-bar-fill"
-        style={{ width: `${(value / max) * 100}%`, background: color }}
+        className="h-1.5 rounded-full transition-all duration-700"
+        style={{ width: `${Math.min((value / max) * 100, 100)}%`, background: hex }}
       />
     </div>
   );
 }
 
-// ─── Stat card ───────────────────────────────────────────────────────────────
-
-function StatCard({
-  label,
-  value,
-  sub,
-  accent,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  accent: string;
-}) {
+function StatCard({ label, value, sub, hex }: { label: string; value: string | number; sub?: string; hex: string }) {
   return (
-    <div className="db-stat-card" style={{ "--accent": accent } as React.CSSProperties}>
-      <div className="db-stat-accent" />
-      <p className="db-stat-label">{label}</p>
-      <p className="db-stat-value">{value}</p>
-      {sub && <p className="db-stat-sub">{sub}</p>}
+    <div className="relative border border-gray-100 rounded-xl p-5 overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-xl" style={{ background: hex }} />
+      <p className="text-xs text-gray-400 uppercase tracking-wide mb-3">{label}</p>
+      <p className="text-3xl font-semibold text-gray-900 leading-none">{value}</p>
+      {sub && <p className="text-xs text-gray-300 mt-1.5">{sub}</p>}
     </div>
   );
 }
-
-// ─── Teacher row ─────────────────────────────────────────────────────────────
 
 function TeacherRow({ t, rank }: { t: Teacher; rank: number }) {
-  const severityIdx = parseFloat(String(t.severity_index ?? 0));
-  const color = severityColor(severityIdx);
-  const label = severityLabel(severityIdx);
+  const idx = parseFloat(String(t.severity_index ?? 0));
+  const clr = severityColor(idx);
   return (
-    <div className="db-teacher-row">
-      <span className="db-teacher-rank">{rank}</span>
-      <div className="db-teacher-info">
-        <span className="db-teacher-name">{t.name}</span>
-        <span className="db-teacher-fp">{t.fingerprint}</span>
+    <div className="flex items-center gap-3 px-4 py-3 border border-gray-100 rounded-xl hover:border-gray-200 transition-colors">
+      <span className="text-xs text-gray-300 font-mono w-4 shrink-0">{rank}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-800 truncate">{t.name}</p>
+        <p className="text-xs text-gray-300 truncate">{t.fingerprint}</p>
       </div>
-      <div className="db-teacher-right">
-        <span className="db-teacher-badge" style={{ background: color + "22", color, border: `1px solid ${color}55` }}>
-          {label}
+      <div className="flex items-center gap-2 shrink-0">
+        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${clr.bg} ${clr.text} ${clr.border}`}>
+          {severityLabel(idx)}
         </span>
-        <span className="db-teacher-score" style={{ color }}>
-          {severityIdx > 0 ? "+" : ""}
-          {severityIdx.toFixed(1)}
+        <span className={`text-sm font-semibold w-10 text-right ${clr.text}`}>
+          {idx > 0 ? "+" : ""}{idx.toFixed(1)}
         </span>
       </div>
     </div>
   );
 }
-
-// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -120,174 +98,150 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const [s, a] = await Promise.all([
-          fetch("http://localhost:5001/api/summary").then((r) => r.json()),
-          fetch("http://localhost:5001/api/teachers/analytics").then((r) => r.json()),
-        ]);
-        setSummary(s);
-        setAnalytics(a);
-      } catch {
-        setError("Backend холбогдсонгүй. localhost:5001 ажиллаж байгаа эсэхийг шалгана уу.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    Promise.all([
+      fetch("http://localhost:5001/api/summary").then((r) => r.json()),
+      fetch("http://localhost:5001/api/teachers/analytics").then((r) => r.json()),
+    ])
+      .then(([s, a]) => { setSummary(s); setAnalytics(a); })
+      .catch(() => setError("Backend холбогдсонгүй. localhost:5001 ажиллаж байгаа эсэхийг шалгана уу."))
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
     return (
-      <div className="db-loading">
-        <div className="db-spinner" />
-        <p>Өгөгдөл татаж байна…</p>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-sm text-gray-300 animate-pulse">Ачаалж байна...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="db-loading">
-        <p className="db-error">{error}</p>
+      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+        <p className="text-sm text-red-400 text-center max-w-sm">{error}</p>
       </div>
     );
   }
 
   return (
-    <main className="db-root">
-      {/* ── Header ── */}
-      <header className="db-header">
-        <div className="db-header-inner">
+    <main className="min-h-screen bg-white">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="db-title">Хяналтын самбар</h1>
-            <p className="db-subtitle">Дипломын хамгаалалтын нэгдсэн статистик</p>
+            <h1 className="text-base font-semibold text-gray-900">Хяналтын самбар</h1>
+            <p className="text-xs text-gray-400">Дипломын хамгаалалтын нэгдсэн статистик</p>
           </div>
-          <nav className="db-nav">
-            <Link href="/" className="db-nav-link">Нүүр</Link>
-            <Link href="/teachers" className="db-nav-link">Багш нар</Link>
-            <Link href="/student" className="db-nav-link">Оюутан</Link>
+          <nav className="flex gap-1">
+            {[
+              { href: "/", label: "Нүүр" },
+              { href: "/teachers", label: "Багш нар" },
+              { href: "/students", label: "Оюутан" },
+              { href: "/compare", label: "Зөрүү шинжилгээ" },
+            ].map((l) => (
+              <Link key={l.href} href={l.href} className="text-xs text-gray-400 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+                {l.label}
+              </Link>
+            ))}
           </nav>
         </div>
       </header>
 
-      <div className="db-content">
-        {/* ── Top stats ── */}
+      <div className="max-w-5xl mx-auto px-6 py-10 flex flex-col gap-10">
+
+        {/* Stat cards */}
         {summary && (
           <>
-            <section className="db-section">
-              <h2 className="db-section-title">Ерөнхий мэдээлэл</h2>
-              <div className="db-stats-grid">
-                <StatCard label="Нийт оюутан" value={summary.totalStudents} sub="бүртгэлтэй" accent="var(--clr-blue)" />
-                <StatCard label="Нийт багш" value={summary.totalTeachers} sub="үнэлгээ өгсөн" accent="var(--clr-violet)" />
-                <StatCard label="Комисс" value={summary.totalCommittees} sub="хороо" accent="var(--clr-orange)" />
-                <StatCard label="Тэнцсэн" value={`${summary.passRate}%`} sub="нийт оюутнаас" accent="var(--clr-green)" />
-              </div>
-            </section>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <StatCard label="Нийт оюутан"  value={summary.totalStudents}    sub="бүртгэлтэй"     hex="#3b82f6" />
+              <StatCard label="Нийт багш"    value={summary.totalTeachers}    sub="үнэлгээ өгсөн"  hex="#8b5cf6" />
+              <StatCard label="Комисс"       value={summary.totalCommittees}  sub="хороо"          hex="#f97316" />
+              <StatCard label="Тэнцсэн"      value={`${summary.passRate}%`}   sub="нийт оюутнаас" hex="#10b981" />
+            </div>
 
-            {/* ── Score breakdown ── */}
-            <section className="db-section">
-              <h2 className="db-section-title">Онооны дүн шинжилгээ</h2>
-              <div className="db-score-panel">
-                <div className="db-score-hero">
-                  <p className="db-score-hero-label">Дундаж оноо</p>
-                  <p className="db-score-hero-val">{summary.averageFinalScore}</p>
-                  <p className="db-score-hero-max">/ 100</p>
+            {/* Score breakdown */}
+            <div className="border border-gray-100 rounded-xl p-6">
+              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-6">Онооны дүн шинжилгээ</h2>
+              <div className="flex flex-col sm:flex-row gap-8 items-center">
+                <div className="shrink-0 text-center border border-blue-100 bg-blue-50 rounded-xl px-8 py-6">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Дундаж оноо</p>
+                  <p className="text-5xl font-bold text-blue-500 leading-none">{summary.averageFinalScore}</p>
+                  <p className="text-xs text-gray-400 mt-1">/ 100</p>
                 </div>
-                <div className="db-score-details">
+                <div className="flex-1 w-full flex flex-col gap-5">
                   {[
-                    { label: "Дундаж оноо", value: summary.averageFinalScore, color: "var(--clr-blue)" },
-                    { label: "Хамгийн өндөр оноо", value: summary.maxFinalScore, color: "var(--clr-green)" },
-                    { label: "Хамгийн бага оноо", value: summary.minFinalScore, color: "var(--clr-red)" },
+                    { label: "Дундаж оноо",        value: summary.averageFinalScore, hex: "#3b82f6" },
+                    { label: "Хамгийн өндөр оноо", value: summary.maxFinalScore,     hex: "#10b981" },
+                    { label: "Хамгийн бага оноо",  value: summary.minFinalScore,     hex: "#ef4444" },
                   ].map((item) => (
-                    <div key={item.label} className="db-score-row">
-                      <div className="db-score-row-top">
-                        <span className="db-score-row-label">{item.label}</span>
-                        <span className="db-score-row-num" style={{ color: item.color }}>
-                          {item.value}
-                        </span>
+                    <div key={item.label}>
+                      <div className="flex justify-between text-xs mb-1.5">
+                        <span className="text-gray-400">{item.label}</span>
+                        <span className="font-semibold" style={{ color: item.hex }}>{item.value}</span>
                       </div>
-                      <ScoreBar value={item.value} color={item.color} />
+                      <Bar value={item.value} hex={item.hex} />
                     </div>
                   ))}
                 </div>
               </div>
-            </section>
+            </div>
           </>
         )}
 
-        {/* ── Teacher analytics ── */}
+        {/* Strictest / most lenient */}
         {analytics && (
-          <div className="db-teachers-grid">
-            <section className="db-section">
-              <h2 className="db-section-title">
-                <span className="db-title-dot" style={{ background: "var(--clr-red)" }} />
-                Хамгийн хатуу багш нар
-              </h2>
-              <p className="db-section-hint">Severity index — бага байх тусам хатуу</p>
-              <div className="db-teacher-list">
-                {analytics.strictest.map((t, i) => (
-                  <TeacherRow key={t.id} t={t} rank={i + 1} />
-                ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {[
+              { title: "Хамгийн хатуу багш нар", hint: "Severity index — бага байх тусам хатуу", dot: "#ef4444", list: analytics.strictest },
+              { title: "Хамгийн зөөлөн багш нар", hint: "Severity index — өндөр байх тусам зөөлөн", dot: "#8b5cf6", list: analytics.mostLenient },
+            ].map((section) => (
+              <div key={section.title} className="border border-gray-100 rounded-xl p-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: section.dot }} />
+                  <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{section.title}</h2>
+                </div>
+                <p className="text-xs text-gray-300 mb-5 pl-4">{section.hint}</p>
+                <div className="flex flex-col gap-2">
+                  {section.list.map((t, i) => <TeacherRow key={t.id} t={t} rank={i + 1} />)}
+                </div>
               </div>
-            </section>
-
-            <section className="db-section">
-              <h2 className="db-section-title">
-                <span className="db-title-dot" style={{ background: "var(--clr-violet)" }} />
-                Хамгийн зөөлөн багш нар
-              </h2>
-              <p className="db-section-hint">Severity index — өндөр байх тусам зөөлөн</p>
-              <div className="db-teacher-list">
-                {analytics.mostLenient.map((t, i) => (
-                  <TeacherRow key={t.id} t={t} rank={i + 1} />
-                ))}
-              </div>
-            </section>
+            ))}
           </div>
         )}
 
-        {/* ── All teachers score table ── */}
+        {/* All teachers table */}
         {analytics && (
-          <section className="db-section">
-            <h2 className="db-section-title">Бүх багшийн дундаж оноо</h2>
-            <div className="db-table-wrap">
-              <table className="db-table">
+          <div className="border border-gray-100 rounded-xl p-6">
+            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Бүх багшийн дундаж оноо</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr>
-                    <th>Нэр</th>
-                    <th>Дундаж оноо</th>
-                    <th>Severity</th>
-                    <th>Noise</th>
-                    <th>Үнэлсэн</th>
-                    <th>Ангилал</th>
+                  <tr className="border-b border-gray-100">
+                    {["Нэр", "Дундаж оноо", "Severity", "Noise", "Үнэлсэн", "Ангилал"].map((h) => (
+                      <th key={h} className="text-left text-[11px] font-semibold text-gray-300 uppercase tracking-wide px-3 py-2 first:pl-0 last:pr-0">{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {analytics.teachers.map((t) => {
-                    const avgAll = parseFloat(String(t.avg_all ?? 0));
-                    const severityIdx = parseFloat(String(t.severity_index ?? 0));
+                    const avg = parseFloat(String(t.avg_all ?? 0));
+                    const idx = parseFloat(String(t.severity_index ?? 0));
                     const noise = parseFloat(String(t.noise ?? 0));
-                    const color = severityColor(severityIdx);
+                    const clr = severityColor(idx);
                     return (
-                      <tr key={t.id}>
-                        <td className="db-table-name">{t.name}</td>
-                        <td>
-                          <div className="db-table-score-wrap">
-                            <span style={{ color, fontWeight: 600 }}>{avgAll.toFixed(1)}</span>
-                            <ScoreBar value={avgAll} max={40} color={color} />
+                      <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                        <td className="px-3 py-2.5 first:pl-0 font-medium text-gray-800 whitespace-nowrap">{t.name}</td>
+                        <td className="px-3 py-2.5 min-w-[130px]">
+                          <div className="flex flex-col gap-1">
+                            <span className={`text-xs font-semibold ${clr.text}`}>{avg.toFixed(1)}</span>
+                            <Bar value={avg} max={40} hex={clr.hex} />
                           </div>
                         </td>
-                        <td style={{ color, fontWeight: 600 }}>
-                          {severityIdx > 0 ? "+" : ""}{severityIdx.toFixed(1)}
-                        </td>
-                        <td className="db-table-muted">{noise.toFixed(1)}</td>
-                        <td className="db-table-muted">{t.graders_count}</td>
-                        <td>
-                          <span
-                            className="db-badge"
-                            style={{ background: color + "18", color, border: `1px solid ${color}44` }}
-                          >
+                        <td className={`px-3 py-2.5 font-semibold text-xs ${clr.text}`}>{idx > 0 ? "+" : ""}{idx.toFixed(1)}</td>
+                        <td className="px-3 py-2.5 text-xs text-gray-400">{noise.toFixed(1)}</td>
+                        <td className="px-3 py-2.5 text-xs text-gray-400">{t.graders_count}</td>
+                        <td className="px-3 py-2.5 last:pr-0">
+                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${clr.bg} ${clr.text} ${clr.border}`}>
                             {t.severity_category}
                           </span>
                         </td>
@@ -297,7 +251,7 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             </div>
-          </section>
+          </div>
         )}
       </div>
     </main>
